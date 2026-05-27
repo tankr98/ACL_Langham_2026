@@ -1,0 +1,23 @@
+# Ignore virtual environments
+venv/
+.venv/
+env/
+.env/
+functions/venv/
+functions/.venv/
+functions/env/
+functions/.env/
+functions/Python/
+
+# Ignore python cache
+__pycache__/
+*.pyc
+
+# Ignore large datasets
+langham_data.xlsx
+
+# Ignore local config
+.firebase/
+firebase.exe
+firebase-debug.log
+compile_log.txt

@@ -1,0 +1,47 @@
+{
+  "hosting": {
+    "site": "langham-54fcb",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/displacement",
+        "run": {
+          "serviceId": "displacement",
+          "region": "us-central1"
+        }
+      }
+    ]
+  },
+  "functions": [
+    {
+      "codebase": "default",
+      "source": "functions",
+      "runtime": "python311",
+      "ignore": [
+        "venv",
+        ".venv",
+        "Python",
+        "__pycache__",
+        ".git",
+        ".gitignore",
+        ".gcloudignore"
+      ]
+    }
+  ],
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Langham, Pasadena - Event Profitability + Displacement Suite</title>
+  
+  <!-- Premium Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Local self-contained React and ReactDOM dependencies (for 100% offline access) -->
+  <script src="react.production.min.js"></script>
+  <script src="react-dom.production.min.js"></script>
+
+  <!-- Local self-contained Babel Standalone (for 100% offline access) -->
+  <script src="babel.min.js"></script>
+
+  <!-- Style reset and page load animation -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #FAF7F2;
+      font-family: 'Lato', sans-serif;
+    }
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #FAF7F2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid #EAE2D8;
+      border-top: 3px solid #E8839B;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .loading-text {
+      color: #6B5C52;
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Mobile Responsive Custom Variables and Classes */
+    :root {
+      --side-padding: 52px;
+      --grid-cols-3: repeat(3, 1fr);
+      --grid-cols-2: 1fr 1fr;
+      --header-flex: row;
+      --header-padding: 28px 52px;
+      --tab-padding: 0 52px;
+    }
+    @media (max-width: 768px) {
+      :root {
+        --side-padding: 16px;
+        --grid-cols-3: 1fr;
+        --grid-cols-2: 1fr;
+        --header-flex: column;
+        --header-padding: 20px 16px;
+        --tab-padding: 0 16px;
+      }
+      .responsive-header {
+        align-items: flex-start !important;
+        text-align: left !important;
+      }
+      .responsive-header-date {
+        text-align: left !important;
+        margin-top: 12px;
+      }
+      .responsive-hero {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 16px !important;
+      }
+      .responsive-hero-value {
+        text-align: left !important;
+      }
+      .tab-button {
+        padding: 12px 14px !important;
+        font-size: 10px !important;
+        letter-spacing: 1px !important;
+      }
+      .responsive-table-wrapper {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border: 1px solid #EAE2D8;
+        border-radius: 10px;
+        margin-bottom: 14px;
+      }
+      .responsive-table {
+        min-width: 650px !important;
+        width: 100% !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Elegant Loading Screen -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-text">The Langham, Pasadena</div>
+  </div>
+
+  <div id="root"></div>
+
+  <!-- Load and Compile App.jsx with Babel Standalone -->
+  <script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+// ---------------------------------------------------------------------------
+// Langham brand palette
+// ---------------------------------------------------------------------------
+const LANG_PINK       = "#E8839B";
+const LANG_PINK_LIGHT = "#FAE8EE";
+const LANG_PINK_MID   = "#F2A7BB";
+const LANG_DARK       = "#2C2420";
+const LANG_DARK2      = "#1A1210";
+const LANG_MID        = "#6B5C52";
+const LANG_GOLD       = "#B89A6A";
+const LANG_IVORY      = "#FAF7F2";
+const LANG_CREAM      = "#F5F0E8";
+const LANG_BORDER     = "#EAE2D8";
+const GO_GREEN        = "#2D7A5F";
+const NO_RED          = "#C04A5E";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const fmt$ = (v) => new Intl.NumberFormat("en-US", { style:"currency", currency:"USD", maximumFractionDigits:0 }).format(v || 0);
+const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
+
+const dateRange = (start, end) => {
+  const dates = [];
+  const s = new Date(start + "T12:00:00");
+  const e = new Date(end   + "T12:00:00");
+  for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+    dates.push(d.toISOString().split("T")[0]);
+  }
+  return dates;
+};
+
+const dayName = (dateStr) =>
+  new Date(dateStr + "T12:00:00").toLocaleDateString("en-US", { weekday:"long" });
+
+// ---------------------------------------------------------------------------
+// Dynamic Holiday Registry (2026)
+// ---------------------------------------------------------------------------
+const HOLIDAYS_2026 = [
+  { name: "Valentine's Day", start: "2026-02-14", end: "2026-02-14" },
+  { name: "Easter Weekend", start: "2026-04-03", end: "2026-04-04" },
+  { name: "Mother's Day", start: "2026-05-08", end: "2026-05-09" },
+  { name: "Memorial Day Weekend", start: "2026-05-22", end: "2026-05-24" },
+  { name: "July 4th", start: "2026-07-03", end: "2026-07-05" },
+  { name: "Labor Day", start: "2026-09-04", end: "2026-09-06" },
+  { name: "Mex Ind Day", start: "2026-09-15", end: "2026-09-15" },
+  { name: "Columbus / Indigenous Peoples Day", start: "2026-10-09", end: "2026-10-10" },
+  { name: "Veterans Day Weekend", start: "2026-11-11", end: "2026-11-12" },
+  { name: "Thanksgiving Break", start: "2026-11-25", end: "2026-11-28" },
+  { name: "Christmas Break", start: "2026-12-24", end: "2026-12-29" },
+  { name: "Rose Bowl", start: "2026-12-30", end: "2027-01-01" },
+];
+
+const isDateHoliday = (dateStr) => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr + "T12:00:00");
+  return HOLIDAYS_2026.some(h => {
+    const start = new Date(h.start + "T12:00:00");
+    const end = new Date(h.end + "T12:00:00");
+    return d >= start && d <= end;
+  });
+};
+
+const EVENT_TYPES = [
+  "Gala / Banquet","Corporate Conference","Wedding",
+  "Product Launch","Board Meeting","Social Reception","Hybrid Event",
+];
+
+// ---------------------------------------------------------------------------
+// Defaults
+// ---------------------------------------------------------------------------
+const EVENT_DEFAULTS = {
+  eventName:       "Grand Gala Dinner",
+  eventType:       "Gala / Banquet",
+  startDate:       "2026-05-22",
+  endDate:         "2026-05-26",
+  // Financials
+  groupADR:        450,
+  fbRevenue:       3800,
+  avRevenue:       848,
+  miscRevenue:     3200,
+  staffCost:       1200,
+  fbCost:          1500,
+  bundledCost:     210,
+  // Parking
+  excessParking:   false,
+  parkingDays:     1,
+  daytimePasses:   0,
+  overnightPasses: 0,
+  amenityDiscount: 0,
+  parkingDiscount: 0,
+  leisureADRKnown: false,
+};
+
+// ---------------------------------------------------------------------------
+// UI Primitives
+// ---------------------------------------------------------------------------
+const SectionLabel = ({ children }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:12, margin:"26px 0 14px" }}>
+    <span style={{ fontSize:11, letterSpacing:3, textTransform:"uppercase", color:LANG_PINK,
+      fontFamily:"'Playfair Display',serif", fontWeight:600 }}>{children}</span>
+    <div style={{ flex:1, height:1, background:`linear-gradient(to right,${LANG_PINK}60,transparent)` }} />
+  </div>
+);
+
+const Field = ({ label, value, onChange, type="text", prefix, options, note, disabled }) => (
+  <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+    <label style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase", color:LANG_MID,
+      fontFamily:"'Lato',sans-serif", fontWeight:600 }}>{label}</label>
+    <div style={{ position:"relative" }}>
+      {prefix && <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)",
+        color:LANG_GOLD, fontSize:14, fontWeight:700 }}>{prefix}</span>}
+      {options ? (
+        <select value={value} onChange={e => onChange(e.target.value)} disabled={disabled}
+          style={{ width:"100%", padding:"10px 13px", border:`1px solid ${LANG_BORDER}`, borderRadius:8,
+            fontSize:14, color:LANG_DARK, background:"#fff", appearance:"none", cursor:"pointer",
+            outline:"none", boxSizing:"border-box" }}>
+          {options.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : type === "checkbox" ? (
+        <input type="checkbox" checked={!!value} onChange={e => onChange(e.target.checked)}
+          style={{ width:18, height:18, cursor:"pointer", accentColor:LANG_PINK }} />
+      ) : (
+        <input type={type} value={value} disabled={disabled}
+          onChange={e => onChange(type === "number" ? parseFloat(e.target.value) || 0 : e.target.value)}
+          style={{ width:"100%", padding:prefix?"10px 13px 10px 28px":"10px 13px",
+            border:`1px solid ${LANG_BORDER}`, borderRadius:8, fontSize:14, color:LANG_DARK,
+            background: disabled ? LANG_CREAM : "#fff", boxSizing:"border-box", outline:"none" }} />
+      )}
+    </div>
+    {note && <span style={{ fontSize:11, color:"#A09080" }}>{note}</span>}
+  </div>
+);
+
+// ---------------------------------------------------------------------------
+// Night-by-night room table (input)
+// ---------------------------------------------------------------------------
+const NightRoomTable = ({ dates, roomsMap, onRoomsChange }) => (
+  <div className="responsive-table-wrapper" style={{ border:`1px solid ${LANG_BORDER}`, borderRadius:10, overflow:"hidden" }}>
+    <table className="responsive-table" style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+      <thead>
+        <tr style={{ background:LANG_CREAM }}>
+          {["Date","Day","Holiday","Group Rooms Needed"].map(h => (
+            <th key={h} style={{ padding:"10px 14px", textAlign:"left", fontSize:11,
+              letterSpacing:1.5, textTransform:"uppercase", color:LANG_MID, fontWeight:600,
+              borderBottom:`1px solid ${LANG_BORDER}` }}>{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {dates.map((date, i) => (
+          <tr key={date} style={{ background: i % 2 === 0 ? "#fff" : LANG_IVORY,
+            borderBottom:`1px solid ${LANG_BORDER}` }}>
+            <td style={{ padding:"10px 14px", color:LANG_DARK, fontWeight:600 }}>
+              {new Date(date + "T12:00:00").toLocaleDateString("en-US",{month:"short", day:"numeric"})}
+            </td>
+            <td style={{ padding:"10px 14px", color:LANG_MID }}>{dayName(date)}</td>
+            <td style={{ padding:"10px 14px", color:LANG_MID }}>{isDateHoliday(date) ? "Yes" : "—"}</td>
+            <td style={{ padding:"10px 14px" }}>
+              <input type="number" value={roomsMap[date] ?? 10}
+                onChange={e => onRoomsChange(date, parseFloat(e.target.value) || 0)}
+                style={{ width:90, padding:"6px 10px", border:`1px solid ${LANG_BORDER}`,
+                  borderRadius:6, fontSize:14, color:LANG_DARK, outline:"none",
+                  fontFamily:"'Lato',sans-serif" }} />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// ---------------------------------------------------------------------------
+// Model status badge
+// ---------------------------------------------------------------------------
+const ModelBadge = ({ status, metrics }) => {
+  const cfg = {
+    idle:    { bg:LANG_CREAM,    border:LANG_BORDER, dot:LANG_MID,  text:"Model ready — update inputs to run" },
+    loading: { bg:"#FFF8E8",    border:LANG_GOLD,   dot:LANG_GOLD, text:"Running regression model…" },
+    ready:   { bg:"#EAF5EF",    border:GO_GREEN,    dot:GO_GREEN, text:"Model active" },
+    error:   { bg:"#FFF3E8",    border:LANG_GOLD,   dot:LANG_GOLD, text:"API unavailable — using historical benchmarks" },
+  }[status] || {};
+
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px",
+      background:cfg.bg, border:`1px solid ${cfg.border}`, borderRadius:8, marginBottom:14 }}>
+      <div style={{ width:8, height:8, borderRadius:"50%", background:cfg.dot, flexShrink:0,
+        animation: status === "loading" ? "pulse 1s ease-in-out infinite" : "none" }} />
+      <span style={{ fontSize:12, letterSpacing:0.5, color:LANG_MID }}>{cfg.text}</span>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}`}</style>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Nightly breakdown table (output)
+// ---------------------------------------------------------------------------
+const BreakdownTable = ({ nights, groupADR, fbRevenue, avRevenue, miscRevenue,
+                          staffCost, fbCost, bundledCost, parkingCost, netAmenityFee = 0, netParkingRev = 0 }) => {
+  if (!nights || nights.length === 0) return null;
+
+  const n = nights.length;
+
+  // Split financials proportionally by group_rooms
+  const totalGroupRooms = nights.reduce((s, r) => s + r.group_rooms, 0);
+
+  return (
+    <div className="responsive-table-wrapper" style={{ overflowX:"auto" }}>
+      <table className="responsive-table" style={{ width:"100%", borderCollapse:"collapse", fontSize:13, fontFamily:"'Lato',sans-serif" }}>
+        <thead>
+          <tr style={{ background:LANG_CREAM, borderBottom:`2px solid ${LANG_BORDER}` }}>
+            {[
+              "Date","Day","Holiday",
+              "Pred. LCR",
+              nights.some(r => r.is_manual_adr) ? "Leisure ADR" : "Pred. ADR",
+              "Pred. F&B/Night",
+              "Est. Leisure Profit / Night",
+              "Group Profit / Night",
+              "Daily Displacement Value",
+            ].map(h => (
+              <th key={h} style={{ padding:"10px 12px", textAlign:"left", fontSize:11,
+                letterSpacing:1.2, textTransform:"uppercase", color:LANG_MID, fontWeight:600,
+                whiteSpace:"nowrap" }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {nights.map((r, i) => {
+            // Group Profit for this night (proportional by room count)
+            const roomShare = totalGroupRooms > 0 ? r.group_rooms / totalGroupRooms : 1 / n;
+
+            // Room revenue contribution this night
+            const nightRoomRev = groupADR * r.group_rooms;
+            // Apply proportional share of ancillary & costs
+            const nightFB     = fbRevenue   * roomShare;
+            const nightAV     = avRevenue   * roomShare;
+            const nightMisc   = miscRevenue * roomShare;
+            const nightStaff  = staffCost   * roomShare;
+            const nightFBCost = fbCost      * roomShare;
+            const nightBundled= bundledCost * roomShare;
+            const nightParking= parkingCost * roomShare;
+
+            const nightAmenity = netAmenityFee * roomShare;
+            const nightParkingRev = netParkingRev * roomShare;
+
+            // Formula: (GroupADR-150)*rooms + 0.2*F&B + AV + Misc + Amenity + ParkingRev - Staff - FBCost - Bundled - Parking
+            const groupProfitNight =
+              (groupADR - 150) * r.group_rooms +
+              (0.2 * nightFB) +
+              nightAV + nightMisc +
+              nightAmenity + nightParkingRev -
+              nightStaff - nightFBCost - nightBundled - nightParking;
+
+            // Est. Leisure Profit for this night (what the model says we'd earn)
+            // = LCR * rooms * adj_rev_per_room  (already computed as night_contribution)
+            const leisureProfitNight = r.night_contribution;
+
+            // Daily Displacement Value = leisure profit - group profit
+            const dailyDisp = leisureProfitNight - groupProfitNight;
+            const dispColor = dailyDisp > 0 ? NO_RED : GO_GREEN;
+
+            return (
+              <tr key={i} style={{ borderBottom:`1px solid ${LANG_BORDER}`,
+                background: i % 2 === 0 ? "#fff" : LANG_IVORY }}>
+                <td style={{ padding:"11px 12px", color:LANG_DARK, fontWeight:600 }}>
+                  {new Date(r.date + "T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+                </td>
+                <td style={{ padding:"11px 12px", color:LANG_MID }}>{r.day_of_week}</td>
+                <td style={{ padding:"11px 12px", color:LANG_MID }}>{r.is_holiday ? "Yes" : "—"}</td>
+                <td style={{ padding:"11px 12px", fontFamily:"'Playfair Display',serif",
+                  fontWeight:700, color:LANG_DARK }}>{fmtPct(r.predicted_lcr * 100)}</td>
+                <td style={{ padding:"11px 12px", fontFamily:"'Playfair Display',serif",
+                  color:LANG_GOLD, display: "flex", alignItems: "center", gap: 6 }}>
+                  {fmt$(r.predicted_adr)}
+                  {r.is_manual_adr && (
+                    <span style={{ fontSize: 9, letterSpacing: 0.5, textTransform: "uppercase", background: LANG_CREAM, color: LANG_GOLD, padding: "2px 6px", borderRadius: 4, fontWeight: 700, border: `1px solid ${LANG_BORDER}`, display: "inline-block" }}>
+                      Manual
+                    </span>
+                  )}
+                </td>
+                <td style={{ padding:"11px 12px", fontFamily:"'Playfair Display',serif",
+                  color:LANG_GOLD }}>{fmt$(r.predicted_fnb)}</td>
+                <td style={{ padding:"11px 12px", fontFamily:"'Playfair Display',serif",
+                  fontWeight:700, color:NO_RED }}>{fmt$(leisureProfitNight)}</td>
+                <td style={{ padding:"11px 12px", fontFamily:"'Playfair Display',serif",
+                  fontWeight:700, color:LANG_DARK }}>{fmt$(groupProfitNight)}</td>
+                <td style={{ padding:"11px 12px", fontFamily:"'Playfair Display',serif",
+                  fontWeight:700, color:dispColor }}>
+                  {dailyDisp > 0 ? "+" : ""}{fmt$(dailyDisp)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr style={{ background:LANG_CREAM, borderTop:`2px solid ${LANG_BORDER}` }}>
+            <td colSpan={6} style={{ padding:"12px", fontSize:12, letterSpacing:1.5,
+              textTransform:"uppercase", color:LANG_MID, fontWeight:700 }}>TOTALS</td>
+            <td style={{ padding:"12px", fontFamily:"'Playfair Display',serif", fontWeight:700,
+              color:NO_RED, fontSize:15 }}>
+              {fmt$(nights.reduce((s, r) => s + r.night_contribution, 0))}
+            </td>
+            <td style={{ padding:"12px", fontFamily:"'Playfair Display',serif", fontWeight:700,
+              color:LANG_DARK, fontSize:15 }}>—</td>
+            <td style={{ padding:"12px", fontFamily:"'Playfair Display',serif", fontWeight:700,
+              fontSize:15,
+              color: nights.reduce((s,r)=>s+r.night_contribution,0) > 0 ? NO_RED : GO_GREEN }}>
+              Net on breakdown
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Dynamic Active Booking Selector
+// ---------------------------------------------------------------------------
+const BookingSelector = ({ activeEventName, historyList, onLoadBooking }) => {
+  if (!historyList || historyList.length === 0) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, background: LANG_CREAM, padding: "8px 14px", borderRadius: 8, border: `1px solid ${LANG_BORDER}`, maxWidth: "max-content" }}>
+        <span style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: LANG_MID, fontWeight: 700 }}>
+          Viewing Proposal:
+        </span>
+        <span style={{ fontSize: 13.5, color: LANG_DARK, fontWeight: 700, fontFamily: "'Playfair Display', serif" }}>
+          {activeEventName} (Unsaved)
+        </span>
+      </div>
+    );
+  }
+
+  const isCurrentSaved = historyList.some(
+    b => b.eventName.toLowerCase().trim() === activeEventName.toLowerCase().trim()
+  );
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14, background: LANG_CREAM, padding: "8px 14px", borderRadius: 8, border: `1px solid ${LANG_BORDER}`, maxWidth: "max-content" }}>
+      <span style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: LANG_MID, fontWeight: 700 }}>
+        Viewing Proposal:
+      </span>
+      <div style={{ position: "relative", display: "inline-block" }}>
+        <select 
+          value={activeEventName}
+          onChange={(e) => {
+            const selectedName = e.target.value;
+            const booking = historyList.find(b => b.eventName === selectedName);
+            if (booking) {
+              onLoadBooking(booking);
+            }
+          }}
+          style={{
+            padding: "6px 28px 6px 12px",
+            border: `1.5px solid ${LANG_GOLD}`,
+            borderRadius: 6,
+            fontSize: 13.5,
+            fontWeight: 700,
+            color: LANG_DARK,
+            background: "#fff",
+            cursor: "pointer",
+            outline: "none",
+            fontFamily: "'Playfair Display', serif",
+            appearance: "none",
+            WebkitAppearance: "none",
+            MozAppearance: "none"
+          }}
+        >
+          {!isCurrentSaved && (
+            <option value={activeEventName}>
+              {activeEventName} (Active Unsaved)
+            </option>
+          )}
+          {historyList.map(b => (
+            <option key={b.eventName} value={b.eventName}>
+              {b.eventName}
+            </option>
+          ))}
+        </select>
+        <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", fontSize: 8, color: LANG_GOLD }}>
+          ▼
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+function HotelProfitabilityTool() {
+  const [event, setEvent]   = useState(EVENT_DEFAULTS);
+  const [roomsMap, setRoomsMap] = useState({ "2026-05-22": 10, "2026-05-23": 10, "2026-05-24": 10, "2026-05-25": 5, "2026-05-26": 2 });
+  const [leisureADRMap, setLeisureADRMap] = useState({ "2026-05-22": 420, "2026-05-23": 420, "2026-05-24": 420, "2026-05-25": 420, "2026-05-26": 420 });
+  const [tab, setTab]       = useState("home");
+  const [mounted, setMounted] = useState(false);
+
+  // Sales Rep States
+  const [repName, setRepName] = useState(() => {
+    try {
+      return sessionStorage.getItem("langham_rep_name") || "";
+    } catch (e) {
+      return "";
+    }
+  });
+  const [historyList, setHistoryList] = useState([]);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState("");
+
+  const [modelStatus,  setModelStatus]  = useState("idle");
+  const [modelResult,  setModelResult]  = useState(null);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  const setE = k => v => setEvent(p => ({ ...p, [k]: v }));
+
+  // Sales Rep Handlers
+  const handleSaveRepName = (name) => {
+    try {
+      sessionStorage.setItem("langham_rep_name", name);
+      setRepName(name);
+    } catch (e) {
+      console.error("Failed to save rep name", e);
+    }
+  };
+
+  const handleSwitchRep = () => {
+    try {
+      sessionStorage.removeItem("langham_rep_name");
+      setRepName("");
+      setEvent(EVENT_DEFAULTS);
+      setRoomsMap({ "2026-05-22": 10, "2026-05-23": 10, "2026-05-24": 10, "2026-05-25": 5, "2026-05-26": 2 });
+      setLeisureADRMap({ "2026-05-22": 420, "2026-05-23": 420, "2026-05-24": 420, "2026-05-25": 420, "2026-05-26": 420 });
+      setTab("home");
+    } catch (e) {
+      console.error("Failed to clear rep session", e);
+    }
+  };
+
+  const handleLoadBooking = (booking, targetTab = "inputs") => {
+    if (booking.eventState) setEvent(booking.eventState);
+    if (booking.roomsMapState) setRoomsMap(booking.roomsMapState);
+    if (booking.leisureADRMapState) setLeisureADRMap(booking.leisureADRMapState);
+    if (targetTab) setTab(targetTab);
+  };
+
+  const handleSaveBooking = () => {
+    if (!repName) return;
+
+    const key = `langham_bookings_${repName}`;
+    let list = [];
+    try {
+      const stored = localStorage.getItem(key);
+      list = stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      list = [];
+    }
+
+    const record = {
+      eventName: event.eventName || "Unnamed Event",
+      eventType: event.eventType,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      groupProfit: groupProfit,
+      displacementValue: dispValue,
+      verdict: isGo ? "Go" : "No-Go",
+      timestamp: Date.now(),
+      eventState: event,
+      roomsMapState: roomsMap,
+      leisureADRMapState: leisureADRMap
+    };
+
+    const index = list.findIndex(
+      r => r.eventName.toLowerCase().trim() === (event.eventName || "Unnamed Event").toLowerCase().trim()
+    );
+
+    if (index >= 0) {
+      list[index] = record;
+    } else {
+      list.push(record);
+    }
+
+    list.sort((a, b) => b.timestamp - a.timestamp);
+
+    try {
+      localStorage.setItem(key, JSON.stringify(list));
+      setHistoryList(list);
+      setSaveFeedback("Assessment saved successfully ✓");
+      setTimeout(() => setSaveFeedback(""), 3000);
+    } catch (e) {
+      console.error("Failed to save history", e);
+      setSaveFeedback("Failed to save assessment ✕");
+      setTimeout(() => setSaveFeedback(""), 3000);
+    }
+  };
+
+  // Sync History List effect
+  useEffect(() => {
+    if (repName) {
+      const key = `langham_bookings_${repName}`;
+      try {
+        const stored = localStorage.getItem(key);
+        setHistoryList(stored ? JSON.parse(stored) : []);
+      } catch (e) {
+        console.error("Failed to parse history", e);
+        setHistoryList([]);
+      }
+    } else {
+      setHistoryList([]);
+    }
+  }, [repName]);
+
+  // Onboarding Welcome Popup Trigger Effect
+  useEffect(() => {
+    if (repName && tab === "home" && historyList.length === 0) {
+      const welcomedKey = `langham_welcomed_${repName}`;
+      try {
+        const welcomed = localStorage.getItem(welcomedKey);
+        if (welcomed !== "true") {
+          setShowWelcomeModal(true);
+        } else {
+          setShowWelcomeModal(false);
+        }
+      } catch (e) {
+        setShowWelcomeModal(false);
+      }
+    } else {
+      setShowWelcomeModal(false);
+    }
+  }, [repName, tab, historyList.length]);
+
+  // ── Derive date list from startDate / endDate ──────────────────────────────
+  const dates = (() => {
+    try { return dateRange(event.startDate, event.endDate); }
+    catch { return []; }
+  })();
+
+  // Keep roomsMap and leisureADRMap in sync when dates change (add new dates, preserve existing)
+  useEffect(() => {
+    setRoomsMap(prev => {
+      const next = {};
+      dates.forEach(d => { next[d] = prev[d] ?? 10; });
+      return next;
+    });
+    setLeisureADRMap(prev => {
+      const next = {};
+      dates.forEach(d => { next[d] = prev[d] ?? 420; });
+      return next;
+    });
+  }, [event.startDate, event.endDate]);
+
+  // ── Financial calculations ─────────────────────────────────────────────────
+  const totalGroupRooms = dates.reduce((s, d) => s + (roomsMap[d] ?? 10), 0);
+  const roomRevenue     = event.groupADR * totalGroupRooms;
+
+  // New Group Revenues (Amenities and Parking passes)
+  const baseAmenityFee      = 70 * totalGroupRooms;
+  const amenityDiscountAmt  = baseAmenityFee * ((event.amenityDiscount || 0) / 100);
+  const netAmenityFee       = baseAmenityFee - amenityDiscountAmt;
+
+  const baseParkingRev      = (25 * (event.daytimePasses || 0)) + (50 * (event.overnightPasses || 0));
+  const parkingDiscountAmt  = baseParkingRev * ((event.parkingDiscount || 0) / 100);
+  const netParkingRev       = baseParkingRev - parkingDiscountAmt;
+
+  const totalRevenue    = roomRevenue + event.fbRevenue + event.avRevenue + event.miscRevenue + netAmenityFee + netParkingRev;
+  const totalCosts      = event.staffCost + event.fbCost + event.bundledCost;
+  const parkingCost     = event.excessParking ? event.parkingDays * 8000 : 0;
+
+  // Group Profit = (GroupADR-150)*totalRoomNights + 0.2*F&B + AV + Misc + netAmenityFee + netParkingRev - costs - parkingCost
+  const groupProfit =
+    (event.groupADR - 150) * totalGroupRooms +
+    (0.2 * event.fbRevenue) +
+    event.avRevenue + event.miscRevenue +
+    netAmenityFee +
+    netParkingRev -
+    event.staffCost - event.fbCost - event.bundledCost -
+    parkingCost;
+
+  const eventMargin = totalRevenue > 0 ? (groupProfit / totalRevenue) * 100 : 0;
+  const fbMargin    = event.fbRevenue > 0 ? ((event.fbRevenue - event.fbCost) / event.fbRevenue) * 100 : 0;
+
+  // ── Build nights array for API call ───────────────────────────────────────
+  const buildNights = useCallback(() =>
+    dates.map(date => ({
+      date,
+      group_rooms: roomsMap[date] ?? 10,
+      is_holiday:  isDateHoliday(date),
+    })),
+  [dates, roomsMap]);
+
+  // ── Call regression API ───────────────────────────────────────────────────
+  const runModel = useCallback(async () => {
+    if (dates.length === 0) return;
+    setModelStatus("loading");
+    try {
+      const res = await fetch("/api/displacement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nights:               buildNights(),
+          group_profit:         groupProfit,
+          excess_parking_days:  event.excessParking ? event.parkingDays : 0,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setModelResult(data);
+      setModelStatus("ready");
+    } catch (err) {
+      // Fallback — flat historical benchmarks
+      const FALLBACK = { lcr: 0.74, adr: 420, fnb: 85 };
+      const nights = buildNights().map(n => {
+        const adj = (FALLBACK.adr - 150) + (FALLBACK.fnb * 0.2);
+        return {
+          ...n,
+          day_of_week:         dayName(n.date),
+          predicted_lcr:       FALLBACK.lcr,
+          predicted_adr:       FALLBACK.adr,
+          predicted_fnb:       FALLBACK.fnb,
+          adj_rev_per_room:    adj,
+          night_contribution:  FALLBACK.lcr * n.group_rooms * adj,
+        };
+      });
+      const totalDisp = nights.reduce((s, n) => s + n.night_contribution, 0);
+      setModelResult({
+        nights,
+        total_displacement:    totalDisp,
+        parking_cost:          parkingCost,
+        adjusted_group_profit: groupProfit,
+        displacement_value:    totalDisp - groupProfit,
+        verdict:               totalDisp - groupProfit < 0 ? "Book the group" : "Decline the group",
+        model_metrics:         null,
+      });
+      setModelStatus("error");
+    }
+  }, [buildNights, groupProfit, event.excessParking, event.parkingDays, dates.length, parkingCost]);
+
+  // Auto-run on input changes (debounced)
+  useEffect(() => {
+    if (!mounted || dates.length === 0) return;
+    const t = setTimeout(runModel, 700);
+    return () => clearTimeout(t);
+  }, [mounted, JSON.stringify(buildNights()), groupProfit, event.excessParking, event.parkingDays]);
+
+  // ── Derived display values ─────────────────────────────────────────────────
+  const processedNights = modelResult?.nights?.map(r => {
+    if (event.leisureADRKnown) {
+      const manualADR = leisureADRMap[r.date] ?? 420;
+      const adj = (manualADR - 150) + (r.predicted_fnb * 0.20);
+      const nightContribution = r.predicted_lcr * r.group_rooms * adj;
+      return {
+        ...r,
+        predicted_adr: manualADR,
+        adj_rev_per_room: adj,
+        night_contribution: nightContribution,
+        is_manual_adr: true
+      };
+    }
+    return r;
+  }) || [];
+
+  const totalDisplacement = processedNights.reduce((s, r) => s + r.night_contribution, 0);
+  const dispValue         = totalDisplacement - groupProfit;
+  const isGo              = dispValue <= 0;
+  const avgLCR = processedNights.length
+    ? processedNights.reduce((s, n) => s + n.predicted_lcr, 0) / processedNights.length : 0.74;
+
+  // Auto-save effect whenever model result updates
+  useEffect(() => {
+    if (!repName || !modelResult || modelStatus === "loading") return;
+
+    // Do not auto-save if the rep has not completed onboarding yet
+    try {
+      const welcomedKey = `langham_welcomed_${repName}`;
+      const welcomed = localStorage.getItem(welcomedKey);
+      if (welcomed !== "true") return;
+    } catch (e) {
+      return;
+    }
+
+    const key = `langham_bookings_${repName}`;
+    let list = [];
+    try {
+      const stored = localStorage.getItem(key);
+      list = stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      list = [];
+    }
+
+    const record = {
+      eventName: event.eventName || "Unnamed Event",
+      eventType: event.eventType,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      groupProfit: groupProfit,
+      displacementValue: dispValue,
+      verdict: isGo ? "Go" : "No-Go",
+      timestamp: Date.now(),
+      eventState: event,
+      roomsMapState: roomsMap,
+      leisureADRMapState: leisureADRMap
+    };
+
+    // Identify by event name (case-insensitive, trimmed)
+    const index = list.findIndex(
+      r => r.eventName.toLowerCase().trim() === (event.eventName || "Unnamed Event").toLowerCase().trim()
+    );
+
+    if (index >= 0) {
+      list[index] = record;
+    } else {
+      list.push(record);
+    }
+
+    // Sort by timestamp descending
+    list.sort((a, b) => b.timestamp - a.timestamp);
+
+    try {
+      localStorage.setItem(key, JSON.stringify(list));
+      setHistoryList(list);
+    } catch (e) {
+      console.error("Failed to save history", e);
+    }
+  }, [modelResult, repName, leisureADRMap, event.leisureADRKnown]);
+
+  if (!mounted) return null;
+
+  return (
+    <div style={{ minHeight:"100vh", background:LANG_IVORY, fontFamily:"'Lato',sans-serif" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+      {/* Header */}
+      <div className="responsive-header" style={{ background:"#FCEEF3", padding:"var(--header-padding)", display:"flex",
+        flexDirection:"var(--header-flex)", alignItems:"center", justifyContent:"space-between", borderBottom:`3px solid ${LANG_PINK}` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:24 }}>
+          <div style={{ width:4, height:48, background:`${LANG_DARK2}60`, borderRadius:99 }} />
+          <div>
+            <div style={{ fontSize:11, letterSpacing:5, color:`${LANG_DARK2}90`, textTransform:"uppercase",
+              marginBottom:5, fontWeight:500 }}>Event Profitability + Displacement Suite</div>
+            <div style={{ fontSize:28, fontFamily:"'Playfair Display',serif", fontWeight:600,
+              color:LANG_DARK2, letterSpacing:3, textTransform:"uppercase" }}>The Langham, Pasadena</div>
+          </div>
+        </div>
+        <div className="responsive-header-date" style={{ textAlign:"right" }}>
+          <div style={{ fontSize:11, color:`${LANG_DARK2}70`, letterSpacing:2, marginBottom:4, textTransform:"uppercase" }}>Analysis Date</div>
+          <div style={{ fontSize:15, color:LANG_DARK2, fontFamily:"'Playfair Display',serif", fontWeight:500, fontStyle:"italic" }}>
+            {new Date().toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" })}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ background:"#fff", borderBottom:`1px solid ${LANG_BORDER}`, padding:"var(--tab-padding)", display:"flex", overflowX:"auto" }}>
+        {[["home","Home"],["inputs","Inputs"],["decision","Go / No-Go"],["breakdown","Nightly Breakdown"]].map(([t, label]) => (
+          <button key={t} onClick={() => setTab(t)} className="tab-button"
+            style={{ padding:"16px 26px", border:"none", background:"none", cursor:"pointer",
+              fontSize:12, letterSpacing:2, textTransform:"uppercase", fontWeight:600,
+              color:tab===t?LANG_DARK:LANG_MID,
+              borderBottom:tab===t?`2px solid ${LANG_PINK}`:"2px solid transparent",
+              transition:"all 0.2s", whiteSpace:"nowrap" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding:"32px var(--side-padding)", maxWidth:1240, margin:"0 auto" }}>
+
+        {/* ===== HOME TAB ===== */}
+        {tab === "home" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            
+            {/* First-Time User Welcome Onboarding Modal */}
+            {showWelcomeModal && (
+              <div style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backgroundColor: "rgba(44, 36, 32, 0.8)",
+                backdropFilter: "blur(8px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 10000,
+                padding: "20px",
+                boxSizing: "border-box"
+              }}>
+                <div style={{
+                  background: LANG_IVORY,
+                  borderTop: `3px solid ${LANG_PINK}`,
+                  borderLeft: `1px solid ${LANG_BORDER}`,
+                  borderRight: `1px solid ${LANG_BORDER}`,
+                  borderBottom: `1px solid ${LANG_BORDER}`,
+                  borderRadius: 16,
+                  padding: "36px 40px",
+                  maxWidth: 580,
+                  width: "100%",
+                  boxShadow: "0 20px 40px rgba(0,0,0,0.35)",
+                  maxHeight: "90vh",
+                  overflowY: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 20,
+                  fontFamily: "'Lato', sans-serif"
+                }}>
+                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: LANG_DARK2, margin: 0, fontWeight: 700, textAlign: "center", lineHeight: 1.3 }}>
+                    Welcome, {repName}. Let's get started.
+                  </h2>
+                  <p style={{ fontFamily: "'Playfair Display', serif", fontStyle: "italic", fontSize: 14, color: LANG_MID, margin: 0, textAlign: "center", lineHeight: 1.5 }}>
+                    You don't have any saved assessments yet — this is where they'll appear once you begin evaluating group bookings.
+                  </p>
+                  
+                  <div style={{ height: 1, background: LANG_GOLD, opacity: 0.6, width: "100%" }} />
+
+                  <div style={{ fontSize: 13.5, color: LANG_DARK, display: "flex", flexDirection: "column", gap: 14, lineHeight: 1.6, textAlign: "left" }}>
+                    <p style={{ margin: 0 }}>
+                      The Langham Group Assessment Tool calculates whether a group event is worth booking by comparing the group's projected profit against the leisure revenue those same rooms would have generated. The result is your Displacement Value — a single number that tells you whether to go forward or pass.
+                    </p>
+                    
+                    <div>
+                      <h4 style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: LANG_GOLD, fontWeight: 700, margin: "0 0 8px 0" }}>
+                        To run your first assessment:
+                      </h4>
+                      <ul style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <li>Head to the Inputs tab and enter your event details — name, dates, rooms needed per night, and financials</li>
+                        <li>The model runs automatically and your Go / No-Go verdict will appear on the home screen</li>
+                        <li>Every assessment is saved here under your name so you can revisit and refine it anytime</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 style={{ fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase", color: LANG_GOLD, fontWeight: 700, margin: "0 0 8px 0" }}>
+                        A couple of things to keep in mind:
+                      </h4>
+                      <ul style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <li>Bookings are tracked by event name — updating an existing event updates that record, starting a new event name creates a new one</li>
+                        <li>Your assessments are private — other reps won't see your leads</li>
+                      </ul>
+                    </div>
+
+                    <p style={{ fontStyle: "italic", color: LANG_MID, fontSize: 12, margin: "6px 0 0 0", textAlign: "center" }}>
+                      When you're ready, click the button below to begin your first assessment.
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={() => {
+                      try {
+                        localStorage.setItem(`langham_welcomed_${repName}`, "true");
+                      } catch (e) {
+                        console.error(e);
+                      }
+                      setShowWelcomeModal(false);
+                      setTab("inputs");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "14px 20px",
+                      background: LANG_PINK,
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      letterSpacing: 2,
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                      fontFamily: "'Lato', sans-serif",
+                      boxSizing: "border-box"
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = LANG_PINK_MID}
+                    onMouseLeave={(e) => e.target.style.background = LANG_PINK}
+                  >
+                    GOT IT — TAKE ME TO INPUTS
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Header / Sales Rep Welcome */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, color: LANG_DARK, margin: 0, fontWeight: 600 }}>
+                  Welcome back, {repName || "Representative"}
+                </h1>
+                <p style={{ fontSize: 14, color: LANG_MID, margin: "4px 0 0 0" }}>
+                  Here is the displacement overview for your active booking proposal.
+                </p>
+              </div>
+              {repName && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, background: LANG_CREAM, padding: "8px 16px", borderRadius: 24, border: `1px solid ${LANG_BORDER}` }}>
+                  <span style={{ color: LANG_MID, fontWeight: 600 }}>Rep: <strong style={{ color: LANG_DARK }}>{repName}</strong></span>
+                  <span style={{ color: LANG_BORDER }}>|</span>
+                  <button 
+                    onClick={handleSwitchRep}
+                    style={{ background: "none", border: "none", color: LANG_PINK, cursor: "pointer", fontWeight: 700, fontSize: 12, padding: 0, textTransform: "uppercase", letterSpacing: 0.5 }}
+                  >
+                    Switch Rep
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Section 1 - Current Booking Verdict Card */}
+            <div style={{ background: "#fff", border: `1px solid ${LANG_BORDER}`, borderRadius: 16, padding: "28px", boxShadow: "0 4px 20px rgba(44, 36, 32, 0.04)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: LANG_PINK, fontFamily: "'Playfair Display', serif", fontWeight: 600 }}>
+                  Section 1 — Active Booking Verdict
+                </span>
+                <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, ${LANG_PINK}60, transparent)` }} />
+              </div>
+
+              {/* Prominent Hero Card */}
+              <div className="responsive-hero" style={{
+                background: isGo ? "#EAF5EF" : "#FAEAED",
+                border: `1.5px solid ${isGo ? GO_GREEN : NO_RED}`,
+                borderRadius: 14,
+                padding: "24px 28px",
+                display: "flex",
+                alignItems: "center",
+                gap: 20,
+                marginBottom: 24
+              }}>
+                <div style={{
+                  width: 52,
+                  height: 52,
+                  background: isGo ? GO_GREEN : NO_RED,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  color: "#fff",
+                  flexShrink: 0,
+                  fontWeight: 700
+                }}>
+                  {isGo ? "✓" : "✕"}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: isGo ? "#3A6A50" : "#7A3040", letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>
+                    DISPLACEMENT SUITE VERDICT
+                  </div>
+                  <div style={{ fontSize: 32, fontFamily: "'Playfair Display', serif", fontWeight: 700, color: isGo ? "#1A3A28" : "#3C1420", lineHeight: 1.2, marginTop: 4 }}>
+                    {isGo ? "GO — Book the Group" : "NO-GO — Decline the Group"}
+                  </div>
+                  <div style={{ fontSize: 14, color: isGo ? "#3A6A50" : "#7A3040", marginTop: 6, lineHeight: 1.4 }}>
+                    {isGo 
+                      ? "Group profit outweighs the projected displaced leisure revenue. It is highly value-accretive to secure this booking."
+                      : "Displaced leisure revenue outweighs group profit. Declining this group will protect overall rooms/F&B profitability."
+                    }
+                  </div>
+                </div>
+                <div className="responsive-hero-value" style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 36, fontFamily: "'Playfair Display', serif", fontWeight: 700, color: isGo ? GO_GREEN : NO_RED }}>
+                    {isGo ? "+" : "-"}{fmt$(Math.abs(dispValue))}
+                  </div>
+                  <div style={{ fontSize: 11, color: LANG_MID, marginTop: 4, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600 }}>
+                    Net displacement value
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid summarizing active booking details */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+                {[
+                  { label: "Event Name", value: event.eventName, isHeader: true },
+                  { label: "Event Type", value: event.eventType },
+                  { label: "Dates & Nights", value: `${event.startDate} to ${event.endDate} (${dates.length} night${dates.length !== 1 ? "s" : ""})` },
+                  { label: "Total Group Rooms", value: `${totalGroupRooms} room nights` },
+                  { label: "Predicted Avg LCR", value: fmtPct(avgLCR * 100) },
+                  { label: "Group Profit", value: fmt$(groupProfit), highlight: true },
+                  { label: "Total Leisure Displaced", value: fmt$(totalDisplacement), danger: true },
+                  { label: "Net Value Verdict", value: `${isGo ? "GO" : "NO-GO"} (${isGo ? "+" : ""}${fmt$(-dispValue)})`, verdictColor: true }
+                ].map(({ label, value, isHeader, highlight, danger, verdictColor }) => (
+                  <div key={label} style={{ background: LANG_IVORY, border: `1px solid ${LANG_BORDER}`, borderRadius: 8, padding: "12px 16px" }}>
+                    <div style={{ fontSize: 11, color: LANG_MID, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>
+                      {label}
+                    </div>
+                    <div style={{
+                      fontSize: isHeader ? 15 : 18,
+                      fontFamily: isHeader ? "'Lato', sans-serif" : "'Playfair Display', serif",
+                      fontWeight: 700,
+                      color: verdictColor ? (isGo ? GO_GREEN : NO_RED) : danger ? NO_RED : highlight ? GO_GREEN : LANG_DARK,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }} title={value}>
+                      {value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <button 
+                  onClick={() => setTab("inputs")}
+                  style={{
+                    padding: "12px 24px",
+                    background: LANG_DARK,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = "#4A3C35"}
+                  onMouseLeave={(e) => e.target.style.background = LANG_DARK}
+                >
+                  Adjust Inputs
+                </button>
+                <button 
+                  onClick={() => setTab("breakdown")}
+                  style={{
+                    padding: "12px 24px",
+                    background: "transparent",
+                    color: LANG_PINK,
+                    border: `1.5px solid ${LANG_PINK}`,
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => { e.target.style.background = LANG_PINK; e.target.style.color = "#fff"; }}
+                  onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.color = LANG_PINK; }}
+                >
+                  See Nightly Breakdown
+                </button>
+              </div>
+            </div>
+
+            {/* Section 2 - My Booking History */}
+            <div style={{ background: "#fff", border: `1px solid ${LANG_BORDER}`, borderRadius: 16, padding: "28px", boxShadow: "0 4px 20px rgba(44, 36, 32, 0.04)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: LANG_PINK, fontFamily: "'Playfair Display', serif", fontWeight: 600 }}>
+                  Section 2 — My Booking History
+                </span>
+                <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, ${LANG_PINK}60, transparent)` }} />
+              </div>
+
+              {historyList.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 20px", background: LANG_IVORY, border: `1px dashed ${LANG_BORDER}`, borderRadius: 12 }}>
+                  <div style={{ fontSize: 40, color: LANG_GOLD, marginBottom: 12 }}>📋</div>
+                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, color: LANG_DARK, margin: "0 0 8px 0" }}>No bookings logged yet</h3>
+                  <p style={{ fontSize: 13, color: LANG_MID, margin: 0, lineHeight: 1.5 }}>
+                    Adjust and save your first event proposal in the Inputs tab to see it logged in your history.
+                  </p>
+                </div>
+              ) : (
+                <div className="responsive-table-wrapper" style={{ border: `1px solid ${LANG_BORDER}`, borderRadius: 10, overflow: "hidden" }}>
+                  <table className="responsive-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: LANG_CREAM }}>
+                        {["Event Name", "Event Type", "Dates", "Verdict", "Displacement Value", "Last Updated", "Actions"].map(h => (
+                          <th key={h} style={{
+                            padding: "12px 16px",
+                            textAlign: "left",
+                            fontSize: 11,
+                            letterSpacing: 1.5,
+                            textTransform: "uppercase",
+                            color: LANG_MID,
+                            fontWeight: 600,
+                            borderBottom: `1px solid ${LANG_BORDER}`
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyList.map((booking, idx) => {
+                        const dispVal = booking.displacementValue;
+                        const isBookingGo = dispVal <= 0;
+                        const formattedDate = new Date(booking.timestamp).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit"
+                        });
+                        return (
+                          <tr 
+                            key={booking.eventName + idx} 
+                            onClick={() => handleLoadBooking(booking, null)}
+                            style={{
+                              background: idx % 2 === 0 ? "#fff" : LANG_IVORY,
+                              borderBottom: `1px solid ${LANG_BORDER}`,
+                              transition: "background 0.2s",
+                              cursor: "pointer"
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "#F5ECEF"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : LANG_IVORY; }}
+                          >
+                            <td style={{ padding: "14px 16px", color: LANG_DARK, fontWeight: 700 }}>
+                              {booking.eventName}
+                            </td>
+                            <td style={{ padding: "14px 16px", color: LANG_MID }}>
+                              {booking.eventType}
+                            </td>
+                            <td style={{ padding: "14px 16px", color: LANG_MID, whiteSpace: "nowrap" }}>
+                              {booking.startDate} to {booking.endDate}
+                            </td>
+                            <td style={{ padding: "14px 16px" }}>
+                              <span style={{
+                                display: "inline-block",
+                                padding: "4px 10px",
+                                borderRadius: 12,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                background: isBookingGo ? "#EAF5EF" : "#FAEAED",
+                                color: isBookingGo ? GO_GREEN : NO_RED,
+                                border: `1px solid ${isBookingGo ? GO_GREEN : NO_RED}30`
+                              }}>
+                                {isBookingGo ? "GO" : "NO-GO"}
+                              </span>
+                            </td>
+                            <td style={{
+                              padding: "14px 16px",
+                              fontFamily: "'Playfair Display', serif",
+                              fontWeight: 700,
+                              color: isBookingGo ? GO_GREEN : NO_RED,
+                              fontSize: 14
+                            }}>
+                              {isBookingGo ? "+" : "-"}{fmt$(Math.abs(dispVal))}
+                            </td>
+                            <td style={{ padding: "14px 16px", color: LANG_MID, fontSize: 12 }}>
+                              {formattedDate}
+                            </td>
+                            <td style={{ padding: "12px 16px" }}>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleLoadBooking(booking, "inputs");
+                                }}
+                                style={{
+                                  padding: "6px 12px",
+                                  background: "none",
+                                  border: `1.5px solid ${LANG_GOLD}`,
+                                  color: LANG_GOLD,
+                                  borderRadius: 6,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  letterSpacing: 1,
+                                  cursor: "pointer",
+                                  transition: "all 0.2s"
+                                }}
+                                onMouseEnter={(e) => { e.target.style.background = LANG_GOLD; e.target.style.color = "#fff"; }}
+                                onMouseLeave={(e) => { e.target.style.background = "none"; e.target.style.color = LANG_GOLD; }}
+                              >
+                                Load
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ===== GO / NO-GO TAB ===== */}
+        {tab === "decision" && (
+          <div style={{ maxWidth:780, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+            <ModelBadge status={modelStatus} metrics={modelResult?.model_metrics} />
+
+            <BookingSelector 
+              activeEventName={event.eventName}
+              historyList={historyList}
+              onLoadBooking={(b) => handleLoadBooking(b, null)}
+            />
+
+            {/* Hero verdict */}
+            <div className="responsive-hero" style={{ background:isGo?"#EAF5EF":"#FAEAED",
+              border:`1.5px solid ${isGo?GO_GREEN:NO_RED}`, borderRadius:14,
+              padding:"24px 28px", display:"flex", alignItems:"center", gap:20 }}>
+              <div style={{ width:52, height:52, background:isGo?GO_GREEN:NO_RED, borderRadius:"50%",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:22, color:"#fff", flexShrink:0, fontWeight:700 }}>
+                {isGo ? "✓" : "✕"}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:32, fontFamily:"'Playfair Display',serif", fontWeight:700,
+                  color:isGo?"#1A3A28":"#3C1420", lineHeight:1 }}>{isGo ? "GO" : "NO-GO"}</div>
+                <div style={{ fontSize:15, color:isGo?"#3A6A50":"#7A3040", marginTop:6, lineHeight:1.5 }}>
+                  {isGo
+                    ? "Group profit exceeds displaced leisure revenue — book the group."
+                    : "Displaced leisure revenue exceeds group profit — decline the group."}
+                </div>
+              </div>
+              <div className="responsive-hero-value" style={{ textAlign:"right", flexShrink:0 }}>
+                <div style={{ fontSize:34, fontFamily:"'Playfair Display',serif", fontWeight:700,
+                  color:isGo?GO_GREEN:NO_RED }}>
+                  {isGo ? "+" : ""}{fmt$(Math.abs(dispValue))}
+                </div>
+                <div style={{ fontSize:11, color:LANG_MID, marginTop:4, letterSpacing:1.5, textTransform:"uppercase" }}>
+                  Net Displacement Value
+                </div>
+              </div>
+            </div>
+
+            {/* 3 metric cards */}
+            <div style={{ display:"grid", gridTemplateColumns:"var(--grid-cols-3)", gap:12 }}>
+              {[
+                { label:"Group Profit",          value:fmt$(groupProfit),          sub:`${dates.length} nights · ${totalGroupRooms} total rooms`, color:LANG_DARK },
+                { label:"Total Leisure Displaced",value:fmt$(totalDisplacement),    sub:`${fmtPct(avgLCR*100)} avg LCR`, color:NO_RED },
+                { label:"Displacement Value",     value:(isGo?"+":"")+fmt$(Math.abs(dispValue)),
+                  sub:isGo?"Value accretive":"Value dilutive", color:isGo?GO_GREEN:NO_RED, outlined:true },
+              ].map(({ label, value, sub, color, outlined }) => (
+                <div key={label} style={{ background:"#fff",
+                  border:`1.5px solid ${outlined?(isGo?GO_GREEN:NO_RED):LANG_BORDER}`,
+                  borderRadius:12, padding:"20px 22px" }}>
+                  <div style={{ fontSize:11, letterSpacing:2, textTransform:"uppercase",
+                    color:LANG_MID, fontWeight:600, marginBottom:8 }}>{label}</div>
+                  <div style={{ fontSize:30, fontFamily:"'Playfair Display',serif",
+                    fontWeight:700, color, lineHeight:1 }}>{value}</div>
+                  <div style={{ fontSize:13, color:LANG_MID, marginTop:6 }}>{sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Revenue bars */}
+            <div style={{ display:"grid", gridTemplateColumns:"var(--grid-cols-2)", gap:12 }}>
+              {/* Event Revenue */}
+              <div style={{ background:"#fff", border:`1px solid ${LANG_BORDER}`, borderRadius:12, padding:"22px 24px" }}>
+                <div style={{ fontSize:11, letterSpacing:2, textTransform:"uppercase",
+                  color:LANG_MID, fontWeight:600, marginBottom:18 }}>Event Revenue Streams</div>
+                {[
+                  { label:"Room Rev.",   value:roomRevenue,       color:LANG_DARK },
+                  { label:"F&B Rev.",    value:event.fbRevenue,   color:LANG_PINK },
+                  { label:"AV / Tech",   value:event.avRevenue,   color:"#7A9AB0" },
+                  { label:"Misc.",       value:event.miscRevenue, color:LANG_GOLD },
+                  { label:"Amenity Fee", value:netAmenityFee,     color:"#9E5E72" },
+                  { label:"Parking Rev", value:netParkingRev,     color:"#6E9A84" },
+                ].map(({ label, value, color }) => {
+                  const pct = totalRevenue > 0 ? Math.min((value/totalRevenue)*100, 100) : 0;
+                  return (
+                    <div key={label} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:11 }}>
+                      <span style={{ width:90, fontSize:13, color:LANG_MID, flexShrink:0 }}>{label}</span>
+                      <div style={{ flex:1, height:8, background:LANG_CREAM, borderRadius:99, overflow:"hidden" }}>
+                        <div style={{ width:`${pct}%`, height:"100%", background:color, borderRadius:99, transition:"width 0.5s ease" }} />
+                      </div>
+                      <span style={{ width:62, textAlign:"right", fontSize:14,
+                        fontFamily:"'Playfair Display',serif", fontWeight:700, color:LANG_DARK }}>{fmt$(value)}</span>
+                    </div>
+                  );
+                })}
+                <div style={{ borderTop:`1px solid ${LANG_BORDER}`, marginTop:12, paddingTop:12 }}>
+                  {parkingCost > 0 && (
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+                      <span style={{ fontSize:13, color:NO_RED }}>Parking Cost</span>
+                      <span style={{ fontSize:14, fontFamily:"'Playfair Display',serif", fontWeight:700, color:NO_RED }}>−{fmt$(parkingCost)}</span>
+                    </div>
+                  )}
+                  <div style={{ display:"flex", justifyContent:"space-between" }}>
+                    <span style={{ fontSize:14, color:LANG_MID }}>Group Profit</span>
+                    <span style={{ fontSize:16, fontFamily:"'Playfair Display',serif",
+                      fontWeight:700, color:groupProfit>=0?GO_GREEN:NO_RED }}>{fmt$(groupProfit)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leisure Displacement */}
+              <div style={{ background:"#fff", border:`1px solid ${LANG_PINK}50`, borderRadius:12, padding:"22px 24px" }}>
+                <div style={{ fontSize:11, letterSpacing:2, textTransform:"uppercase",
+                  color:NO_RED, fontWeight:600, marginBottom:18 }}>Leisure Revenue Displaced</div>
+                {processedNights.length > 0 && (() => {
+                  const avgADR = processedNights.reduce((s,n)=>s+n.predicted_adr,0)/processedNights.length;
+                  const avgFNB = processedNights.reduce((s,n)=>s+n.predicted_fnb,0)/processedNights.length;
+                  const roomDisp = avgLCR * totalGroupRooms * (avgADR - 150);
+                  const fnbDisp  = avgLCR * totalGroupRooms * avgFNB * 0.2;
+                  return [
+                    { label:"Room Rev.", value:roomDisp, color:NO_RED },
+                    { label:"F&B Rev.",  value:fnbDisp,  color:"#D4713F" },
+                  ].map(({ label, value, color }) => {
+                    const pct = totalDisplacement > 0 ? Math.min((value/totalDisplacement)*100, 100) : 0;
+                    return (
+                      <div key={label} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:11 }}>
+                        <span style={{ width:70, fontSize:13, color:LANG_MID, flexShrink:0 }}>{label}</span>
+                        <div style={{ flex:1, height:8, background:LANG_CREAM, borderRadius:99, overflow:"hidden" }}>
+                          <div style={{ width:`${pct}%`, height:"100%", background:color, borderRadius:99, transition:"width 0.5s ease" }} />
+                        </div>
+                        <span style={{ width:62, textAlign:"right", fontSize:14,
+                          fontFamily:"'Playfair Display',serif", fontWeight:700, color:LANG_DARK }}>{fmt$(value)}</span>
+                      </div>
+                    );
+                  });
+                })()}
+                <div style={{ borderTop:`1px solid ${LANG_PINK}30`, marginTop:12, paddingTop:12 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+                    <span style={{ fontSize:14, color:LANG_MID }}>Total Displaced</span>
+                    <span style={{ fontSize:16, fontFamily:"'Playfair Display',serif",
+                      fontWeight:700, color:NO_RED }}>{fmt$(totalDisplacement)}</span>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between" }}>
+                    <span style={{ fontSize:12, color:LANG_MID }}>Avg Predicted LCR</span>
+                    <span style={{ fontSize:13, fontFamily:"'Playfair Display',serif", color:LANG_MID }}>{fmtPct(avgLCR*100)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* F&B margin pill */}
+            <div style={{ background:"#fff", border:`1.5px solid ${fbMargin>=60?GO_GREEN:fbMargin>=40?LANG_GOLD:NO_RED}40`,
+              borderRadius:12, padding:"18px 24px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ fontSize:12, letterSpacing:2, textTransform:"uppercase", color:LANG_MID, fontWeight:600 }}>F&B Margin</span>
+              <span style={{ fontSize:28, fontFamily:"'Playfair Display',serif", fontWeight:700,
+                color:fbMargin>=60?GO_GREEN:fbMargin>=40?LANG_GOLD:NO_RED }}>{fmtPct(fbMargin)}</span>
+            </div>
+
+            <div style={{ textAlign:"center", fontSize:12, color:LANG_MID, fontStyle:"italic", paddingBottom:4 }}>
+              Note: Parking costs (if applicable) are deducted from Group Profit before the displacement calculation.
+            </div>
+          </div>
+        )}
+
+        {/* ===== NIGHTLY BREAKDOWN TAB ===== */}
+        {tab === "breakdown" && (
+          <div style={{ maxWidth:1100, margin:"0 auto", display:"flex", flexDirection:"column", gap:14 }}>
+            <ModelBadge status={modelStatus} metrics={modelResult?.model_metrics} />
+
+            <BookingSelector 
+              activeEventName={event.eventName}
+              historyList={historyList}
+              onLoadBooking={(b) => handleLoadBooking(b, null)}
+            />
+
+            {modelStatus === "loading" && (
+              <div style={{ textAlign:"center", padding:40, color:LANG_MID, fontStyle:"italic" }}>
+                Running regression model across {dates.length} night{dates.length!==1?"s":""}…
+              </div>
+            )}
+
+            {modelResult && (
+              <BreakdownTable
+                nights={processedNights}
+                groupADR={event.groupADR}
+                fbRevenue={event.fbRevenue}
+                avRevenue={event.avRevenue}
+                miscRevenue={event.miscRevenue}
+                staffCost={event.staffCost}
+                fbCost={event.fbCost}
+                bundledCost={event.bundledCost}
+                parkingCost={parkingCost}
+                netAmenityFee={netAmenityFee}
+                netParkingRev={netParkingRev}
+              />
+            )}
+
+            {/* Summary totals */}
+            {modelResult && (
+              <div style={{ background:"#fff", border:`1px solid ${LANG_BORDER}`, borderRadius:12, padding:"20px 24px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12 }}>
+                  {[
+                    { label:"Total Leisure Displaced", value:fmt$(modelResult.total_displacement), color:NO_RED },
+                    { label:"Group Profit",            value:fmt$(groupProfit),                   color:LANG_DARK },
+                    { label:"Parking Deduction",       value:parkingCost>0?`−${fmt$(parkingCost)}`:"None", color:parkingCost>0?NO_RED:LANG_MID },
+                    { label:"Net Displacement Value",  value:(isGo?"+":"")+fmt$(Math.abs(dispValue)),
+                      color:isGo?GO_GREEN:NO_RED },
+                  ].map(({ label, value, color }) => (
+                    <div key={label}>
+                      <div style={{ fontSize:11, letterSpacing:1.5, textTransform:"uppercase",
+                        color:LANG_MID, fontWeight:600, marginBottom:6 }}>{label}</div>
+                      <div style={{ fontSize:24, fontFamily:"'Playfair Display',serif",
+                        fontWeight:700, color }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop:14, padding:"12px 16px", background:isGo?"#EAF5EF":"#FAEAED",
+                  borderRadius:8, fontSize:14, fontWeight:600,
+                  color:isGo?"#1A3A28":"#3C1420", textAlign:"center" }}>
+                  Verdict: {modelResult.verdict}
+                </div>
+              </div>
+            )}
+
+            {/* Formula box */}
+            <div style={{ background:"#fff", border:`1px solid ${LANG_BORDER}`, borderRadius:12, padding:"18px 24px" }}>
+              <div style={{ fontSize:11, letterSpacing:2, textTransform:"uppercase",
+                color:LANG_MID, fontWeight:600, marginBottom:10 }}>Formula Applied Each Night</div>
+              <div style={{ fontFamily:"'Lato',sans-serif", fontSize:13, color:LANG_DARK, lineHeight:2 }}>
+                <span style={{ color:NO_RED, fontWeight:600 }}>Est. Leisure Profit / Night</span>
+                {" = Predicted LCR × Group Rooms × [(Pred. ADR − $150) + (Pred. F&B × 0.20)]"}
+                <br />
+                <span style={{ color:LANG_DARK, fontWeight:600 }}>Group Profit / Night</span>
+                {" = (Group ADR − $150) × Rooms + (0.20 × F&B) + AV + Misc + Amenity Fee + Parking Rev. (proportional) − Costs − Parking Cost (proportional)"}
+                <br />
+                <span style={{ color:isGo?GO_GREEN:NO_RED, fontWeight:600 }}>Daily Displacement Value</span>
+                {" = Est. Leisure Profit − Group Profit  |  "}
+                <span style={{ color:NO_RED }}>Positive = Leisure wins</span>
+                {" · "}
+                <span style={{ color:GO_GREEN }}>Negative = Group wins</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== INPUTS TAB ===== */}
+        {tab === "inputs" && (
+          <div style={{ maxWidth:600, margin:"0 auto" }}>
+            <div style={{ background:"#fff", border:`1px solid ${LANG_BORDER}`, borderRadius:14, padding:"30px 34px" }}>
+
+              <SectionLabel>Event Details</SectionLabel>
+              <div style={{ display:"grid", gap:12 }}>
+                <Field label="Event Name"  value={event.eventName} onChange={setE("eventName")} />
+                <Field label="Event Type"  value={event.eventType} onChange={setE("eventType")} options={EVENT_TYPES} />
+              </div>
+
+              <SectionLabel>Booking Dates</SectionLabel>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <Field label="Start Date" value={event.startDate} onChange={setE("startDate")} type="date" />
+                <Field label="End Date"   value={event.endDate}   onChange={setE("endDate")}   type="date" />
+              </div>
+              <SectionLabel>Rooms Needed per Night</SectionLabel>
+              {dates.length === 0 ? (
+                <div style={{ fontSize:13, color:LANG_MID, fontStyle:"italic" }}>Enter valid start and end dates above.</div>
+              ) : (
+                <NightRoomTable
+                  dates={dates}
+                  roomsMap={roomsMap}
+                  onRoomsChange={(date, val) => setRoomsMap(p => ({ ...p, [date]: val }))}
+                />
+              )}
+
+              <SectionLabel>Group Financials</SectionLabel>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <Field label="Group ADR (per room/night)" value={event.groupADR} onChange={setE("groupADR")} type="number" prefix="$"
+                  note="Used in group profit calc: (ADR−$150)×rooms" />
+                <Field label="Total F&B Revenue" value={event.fbRevenue} onChange={setE("fbRevenue")} type="number" prefix="$" />
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginTop:12 }}>
+                <Field label="AV / Tech Revenue"  value={event.avRevenue}   onChange={setE("avRevenue")}   type="number" prefix="$" />
+                <Field label="Misc. Revenue"       value={event.miscRevenue} onChange={setE("miscRevenue")} type="number" prefix="$" />
+              </div>
+
+              <SectionLabel>Leisure ADR Override</SectionLabel>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom: event.leisureADRKnown ? 14 : 0 }}>
+                <Field label="Leisure ADR Known?" value={event.leisureADRKnown || false} onChange={setE("leisureADRKnown")} type="checkbox" />
+                <span style={{ fontSize:13, color:LANG_MID, paddingTop:2 }}>Manually override the model's predicted Leisure ADR values</span>
+              </div>
+              {event.leisureADRKnown && (
+                dates.length === 0 ? (
+                  <div style={{ fontSize:13, color:LANG_MID, fontStyle:"italic" }}>Enter valid start and end dates above.</div>
+                ) : (
+                  <div className="responsive-table-wrapper" style={{ border:`1px solid ${LANG_BORDER}`, borderRadius:10, overflow:"hidden", marginBottom:14 }}>
+                    <table className="responsive-table" style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                      <thead>
+                        <tr style={{ background:LANG_CREAM }}>
+                          {["Date","Day","Holiday","Leisure ADR"].map(h => (
+                            <th key={h} style={{ padding:"10px 14px", textAlign:"left", fontSize:11,
+                              letterSpacing:1.5, textTransform:"uppercase", color:LANG_MID, fontWeight:600,
+                              borderBottom:`1px solid ${LANG_BORDER}` }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dates.map((date, i) => (
+                          <tr key={date} style={{ background: i % 2 === 0 ? "#fff" : LANG_IVORY,
+                            borderBottom:`1px solid ${LANG_BORDER}` }}>
+                            <td style={{ padding:"10px 14px", color:LANG_DARK, fontWeight:600 }}>
+                              {new Date(date + "T12:00:00").toLocaleDateString("en-US",{month:"short", day:"numeric"})}
+                            </td>
+                            <td style={{ padding:"10px 14px", color:LANG_MID }}>{dayName(date)}</td>
+                            <td style={{ padding:"10px 14px", color:LANG_MID }}>{isDateHoliday(date) ? "Yes" : "—"}</td>
+                            <td style={{ padding:"10px 14px" }}>
+                              <div style={{ position:"relative", width:110 }}>
+                                <span style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", color:LANG_GOLD, fontSize:14, fontWeight:700 }}>$</span>
+                                <input type="number" value={leisureADRMap[date] ?? 420}
+                                  onChange={e => setLeisureADRMap(p => ({ ...p, [date]: parseFloat(e.target.value) || 0 }))}
+                                  style={{ width:"100%", padding:"6px 10px 6px 20px", border:`1px solid ${LANG_BORDER}`,
+                                    borderRadius:6, fontSize:14, color:LANG_DARK, outline:"none",
+                                    fontFamily:"'Lato',sans-serif", boxSizing:"border-box" }} />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              )}
+
+              <SectionLabel>Direct Costs</SectionLabel>
+              <div style={{ display:"grid", gap:12 }}>
+                <Field label="Staff & Labor"            value={event.staffCost}   onChange={setE("staffCost")}   type="number" prefix="$" />
+                <Field label="F&B Cost"                 value={event.fbCost}      onChange={setE("fbCost")}      type="number" prefix="$" />
+                <Field label="AV / Rooming / Setup / OH" value={event.bundledCost} onChange={setE("bundledCost")} type="number" prefix="$" />
+              </div>
+
+              <SectionLabel>Concessions</SectionLabel>
+              <div style={{ display: "grid", gap: 16, background: LANG_CREAM, padding: "18px 20px", borderRadius: 10, border: `1px solid ${LANG_BORDER}` }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: LANG_MID, fontFamily: "'Lato',sans-serif", fontWeight: 600 }}>
+                      Amenity Fee Discount
+                    </label>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: LANG_PINK, fontFamily: "'Playfair Display', serif" }}>
+                      {event.amenityDiscount || 0}% Off
+                    </span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    step="5" 
+                    value={event.amenityDiscount || 0} 
+                    onChange={e => setE("amenityDiscount")(parseInt(e.target.value) || 0)} 
+                    style={{ width: "100%", accentColor: LANG_PINK, cursor: "pointer", height: 6, borderRadius: 3, background: LANG_BORDER, outline: "none" }} 
+                  />
+                  <div style={{ fontSize: 11, color: "#A09080", display: "flex", justifyContent: "space-between" }}>
+                    <span>0% (No discount)</span>
+                    <span>100% (Complimentary)</span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: LANG_MID, fontFamily: "'Lato',sans-serif", fontWeight: 600 }}>
+                      Parking Fee Discount
+                    </label>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: LANG_PINK, fontFamily: "'Playfair Display', serif" }}>
+                      {event.parkingDiscount || 0}% Off
+                    </span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    step="5" 
+                    value={event.parkingDiscount || 0} 
+                    onChange={e => setE("parkingDiscount")(parseInt(e.target.value) || 0)} 
+                    style={{ width: "100%", accentColor: LANG_PINK, cursor: "pointer", height: 6, borderRadius: 3, background: LANG_BORDER, outline: "none" }} 
+                  />
+                  <div style={{ fontSize: 11, color: "#A09080", display: "flex", justifyContent: "space-between" }}>
+                    <span>0% (No discount)</span>
+                    <span>100% (Complimentary)</span>
+                  </div>
+                </div>
+              </div>
+
+              <SectionLabel>Parking</SectionLabel>
+              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <Field label="Excess Parking Required?" value={event.excessParking} onChange={setE("excessParking")} type="checkbox" />
+                <span style={{ fontSize:13, color:LANG_MID, paddingTop:2 }}>$8,000 per day deducted from group profit</span>
+              </div>
+              {event.excessParking && (
+                <div style={{ marginTop:12, maxWidth:200 }}>
+                  <Field label="Number of Parking Days" value={event.parkingDays} onChange={setE("parkingDays")} type="number"
+                    note={`Total deduction: ${fmt$(event.parkingDays * 8000)}`} />
+                </div>
+              )}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginTop:12 }}>
+                <Field label="Daytime Passes ($25/ea)" value={event.daytimePasses || 0} onChange={setE("daytimePasses")} type="number"
+                  note="6 AM - 9 PM daytime parking" />
+                <Field label="Overnight Passes ($50/ea)" value={event.overnightPasses || 0} onChange={setE("overnightPasses")} type="number"
+                  note="Overnight parking passes" />
+              </div>
+
+              {/* Profit preview */}
+              <div style={{ marginTop:22, padding:"16px 18px", background:LANG_PINK_LIGHT,
+                borderRadius:10, fontSize:13, color:LANG_MID, lineHeight:1.8 }}>
+                <div style={{ fontWeight:700, color:LANG_DARK, marginBottom:4 }}>Calculated Group Profit Preview</div>
+                <div>(Group ADR − $150) × {totalGroupRooms} rooms = {fmt$((event.groupADR-150)*totalGroupRooms)}</div>
+                <div>+ 20% F&B = {fmt$(0.2*event.fbRevenue)}</div>
+                <div>+ AV + Misc = {fmt$(event.avRevenue+event.miscRevenue)}</div>
+                <div>
+                  + Amenity Fee = {fmt$(baseAmenityFee)} 
+                  {event.amenityDiscount > 0 && ` (−${event.amenityDiscount}% concession = ${fmt$(netAmenityFee)})`}
+                </div>
+                <div>
+                  + Parking Rev. = {fmt$(baseParkingRev)} 
+                  {event.parkingDiscount > 0 && ` (−${event.parkingDiscount}% concession = ${fmt$(netParkingRev)})`}
+                </div>
+                <div>− Costs = {fmt$(event.staffCost+event.fbCost+event.bundledCost)}</div>
+                {parkingCost > 0 && <div>− Excess Parking Cost = {fmt$(parkingCost)}</div>}
+                <div style={{ borderTop:`1px solid ${LANG_BORDER}`, marginTop:6, paddingTop:6,
+                  fontWeight:700, color:groupProfit>=0?GO_GREEN:NO_RED }}>
+                  = {fmt$(groupProfit)}
+                </div>
+              </div>
+
+              {/* Manual Save Button */}
+              <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <button
+                  onClick={handleSaveBooking}
+                  style={{
+                    padding: "12px 24px",
+                    background: LANG_PINK,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    fontFamily: "'Lato', sans-serif"
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = LANG_PINK_MID}
+                  onMouseLeave={(e) => e.target.style.background = LANG_PINK}
+                >
+                  Save Booking Info
+                </button>
+                {saveFeedback && (
+                  <span style={{
+                    fontSize: 13.5,
+                    fontWeight: 600,
+                    color: saveFeedback.includes("successfully") ? GO_GREEN : NO_RED,
+                    fontFamily: "'Lato', sans-serif"
+                  }}>
+                    {saveFeedback}
+                  </span>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Disclaimer */}
+        <div style={{ textAlign: "center", fontSize: 11, color: "#A09080", fontStyle: "italic", marginTop: 32, lineHeight: 1.5 }}>
+          Disclaimer: Leisure occupancy projections and displacement calculations are predictive point estimates generated by statistical models. Actual results may vary based on market conditions, and assessments should be utilized as strategic decision-making support.
+        </div>
+      </div>
+
+      <div style={{ textAlign:"center", padding:"28px", color:`${LANG_PINK}50`, fontSize:12,
+        letterSpacing:3, fontFamily:"'Playfair Display',serif", fontStyle:"italic", textTransform:"uppercase" }}>
+        The Langham, Pasadena · Event Profitability + Displacement Suite · Confidential
+      </div>
+
+      {/* Sales Rep Entry Modal */}
+      {!repName && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          backgroundColor: "rgba(44, 36, 32, 0.8)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 10000,
+        }}>
+          <div style={{
+            background: LANG_IVORY,
+            border: `2px solid ${LANG_GOLD}`,
+            borderRadius: 16,
+            padding: "40px 48px",
+            maxWidth: 450,
+            width: "90%",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+            textAlign: "center",
+            fontFamily: "'Lato', sans-serif"
+          }}>
+            <div style={{ fontSize: 11, letterSpacing: 4, color: LANG_PINK, textTransform: "uppercase", marginBottom: 12, fontWeight: 600, fontFamily: "'Playfair Display', serif" }}>
+              The Langham, Pasadena
+            </div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, color: LANG_DARK2, margin: "0 0 24px 0", fontWeight: 600, letterSpacing: 1 }}>
+              Welcome back
+            </h2>
+            <p style={{ fontSize: 14, color: LANG_MID, margin: "0 0 28px 0", lineHeight: 1.6 }}>
+              Please enter your Sales Representative Name to access your personal dashboard and booking logs.
+            </p>
+            <input 
+              type="text"
+              placeholder="e.g. Eleanor Vance"
+              id="rep-name-input"
+              style={{
+                width: "100%",
+                padding: "14px 18px",
+                border: `1.5px solid ${LANG_BORDER}`,
+                borderRadius: 8,
+                fontSize: 15,
+                color: LANG_DARK,
+                background: "#fff",
+                outline: "none",
+                textAlign: "center",
+                marginBottom: 20,
+                boxSizing: "border-box",
+                fontFamily: "'Lato', sans-serif"
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.target.value.trim()) {
+                  handleSaveRepName(e.target.value.trim());
+                }
+              }}
+            />
+            <button 
+              onClick={() => {
+                const val = document.getElementById("rep-name-input")?.value?.trim();
+                if (val) {
+                  handleSaveRepName(val);
+                }
+              }}
+              style={{
+                width: "100%",
+                padding: "14px 20px",
+                background: LANG_PINK,
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 700,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                cursor: "pointer",
+                transition: "background 0.2s",
+                fontFamily: "'Lato', sans-serif"
+              }}
+            >
+              Enter Suite
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Mount the React application to the DOM and remove loading spinner
+const rootEl = document.getElementById('root');
+if (rootEl) {
+  const root = ReactDOM.createRoot(rootEl);
+  root.render(
+    <React.StrictMode>
+      <HotelProfitabilityTool />
+    </React.StrictMode>
+  );
+  
+  // Smooth fade out of loading screen
+  const loader = document.getElementById('loading-screen');
+  if (loader) {
+    loader.style.opacity = 0;
+    setTimeout(() => {
+      loader.remove();
+    }, 500);
+  }
+}
+
+
+  </script>
+
+  <!-- Fallback: automatically remove loading screen if Babel compilation takes too long -->
+  <script>
+    setTimeout(function() {
+      var loader = document.getElementById('loading-screen');
+      if (loader) {
+        console.warn("Babel compilation or React mounting timed out. Removing loading screen via local fallback script.");
+        loader.style.opacity = 0;
+        setTimeout(function() {
+          if (loader.parentNode) {
+            loader.remove();
+          }
+        }, 500);
+      }
+    }, 4000);
+  </script>
+</body>
+</html>

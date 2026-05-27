@@ -1,0 +1,17 @@
+# Ignore virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore local Python binaries if any
+Python/
+_cache/
+bin/
+pythoncore-*/
