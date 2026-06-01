@@ -145,6 +145,7 @@ const NO_RED          = "#C04A5E";
 // ---------------------------------------------------------------------------
 const fmt$ = (v) => new Intl.NumberFormat("en-US", { style:"currency", currency:"USD", maximumFractionDigits:0 }).format(v || 0);
 const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
+const fmtDispVal = (v) => v > 0 ? `+${fmt$(v)}` : fmt$(v);
 
 const dateRange = (start, end) => {
   const dates = [];
@@ -412,7 +413,7 @@ const BreakdownTable = ({ nights, groupADR, fbRevenue, avRevenue, miscRevenue,
                   fontWeight:700, color:LANG_DARK }}>{fmt$(groupProfitNight)}</td>
                 <td style={{ padding:"11px 12px", fontFamily:"'Playfair Display',serif",
                   fontWeight:700, color:dispColor }}>
-                  {dailyDisp > 0 ? "+" : ""}{fmt$(dailyDisp)}
+                  {fmtDispVal(dailyDisp)}
                 </td>
               </tr>
             );
@@ -1080,7 +1081,7 @@ function HotelProfitabilityTool() {
                 </div>
                 <div className="responsive-hero-value" style={{ textAlign: "right", flexShrink: 0 }}>
                   <div style={{ fontSize: 36, fontFamily: "'Playfair Display', serif", fontWeight: 700, color: isGo ? GO_GREEN : NO_RED }}>
-                    {isGo ? "+" : "-"}{fmt$(Math.abs(dispValue))}
+                    {fmtDispVal(dispValue)}
                   </div>
                   <div style={{ fontSize: 11, color: LANG_MID, marginTop: 4, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 600 }}>
                     Net displacement value
@@ -1098,7 +1099,7 @@ function HotelProfitabilityTool() {
                   { label: "Predicted Avg LCR", value: fmtPct(avgLCR * 100) },
                   { label: "Group Profit", value: fmt$(groupProfit), highlight: true },
                   { label: "Total Leisure Displaced", value: fmt$(totalDisplacement), danger: true },
-                  { label: "Net Value Verdict", value: `${isGo ? "GO" : "NO-GO"} (${isGo ? "+" : ""}${fmt$(-dispValue)})`, verdictColor: true }
+                  { label: "Net Value Verdict", value: `${isGo ? "GO" : "NO-GO"} (${fmtDispVal(dispValue)})`, verdictColor: true }
                 ].map(({ label, value, isHeader, highlight, danger, verdictColor }) => (
                   <div key={label} style={{ background: LANG_IVORY, border: `1px solid ${LANG_BORDER}`, borderRadius: 8, padding: "12px 16px" }}>
                     <div style={{ fontSize: 11, color: LANG_MID, letterSpacing: 1, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>
@@ -1254,7 +1255,7 @@ function HotelProfitabilityTool() {
                               color: isBookingGo ? GO_GREEN : NO_RED,
                               fontSize: 14
                             }}>
-                              {isBookingGo ? "+" : "-"}{fmt$(Math.abs(dispVal))}
+                              {fmtDispVal(dispVal)}
                             </td>
                             <td style={{ padding: "14px 16px", color: LANG_MID, fontSize: 12 }}>
                               {formattedDate}
@@ -1327,7 +1328,7 @@ function HotelProfitabilityTool() {
               <div className="responsive-hero-value" style={{ textAlign:"right", flexShrink:0 }}>
                 <div style={{ fontSize:34, fontFamily:"'Playfair Display',serif", fontWeight:700,
                   color:isGo?GO_GREEN:NO_RED }}>
-                  {isGo ? "+" : ""}{fmt$(Math.abs(dispValue))}
+                  {fmtDispVal(dispValue)}
                 </div>
                 <div style={{ fontSize:11, color:LANG_MID, marginTop:4, letterSpacing:1.5, textTransform:"uppercase" }}>
                   Net Displacement Value
@@ -1340,7 +1341,7 @@ function HotelProfitabilityTool() {
               {[
                 { label:"Group Profit",          value:fmt$(groupProfit),          sub:`${dates.length} nights · ${totalGroupRooms} total rooms`, color:LANG_DARK },
                 { label:"Total Leisure Displaced",value:fmt$(totalDisplacement),    sub:`${fmtPct(avgLCR*100)} avg LCR`, color:NO_RED },
-                { label:"Displacement Value",     value:(isGo?"+":"")+fmt$(Math.abs(dispValue)),
+                { label:"Displacement Value",     value:fmtDispVal(dispValue),
                   sub:isGo?"Value accretive":"Value dilutive", color:isGo?GO_GREEN:NO_RED, outlined:true },
               ].map(({ label, value, sub, color, outlined }) => (
                 <div key={label} style={{ background:"#fff",
@@ -1491,7 +1492,7 @@ function HotelProfitabilityTool() {
                     { label:"Total Leisure Displaced", value:fmt$(modelResult.total_displacement), color:NO_RED },
                     { label:"Group Profit",            value:fmt$(groupProfit),                   color:LANG_DARK },
                     { label:"Parking Deduction",       value:parkingCost>0?`−${fmt$(parkingCost)}`:"None", color:parkingCost>0?NO_RED:LANG_MID },
-                    { label:"Net Displacement Value",  value:(isGo?"+":"")+fmt$(Math.abs(dispValue)),
+                    { label:"Net Displacement Value",  value:fmtDispVal(dispValue),
                       color:isGo?GO_GREEN:NO_RED },
                   ].map(({ label, value, color }) => (
                     <div key={label}>
