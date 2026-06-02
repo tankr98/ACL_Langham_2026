@@ -1382,7 +1382,7 @@ function HotelProfitabilityTool() {
                 <div style={{ marginTop:14, padding:"12px 16px", background:isGo?"#EAF5EF":"#FAEAED",
                   borderRadius:8, fontSize:14, fontWeight:600,
                   color:isGo?"#1A3A28":"#3C1420", textAlign:"center" }}>
-                  Verdict: {modelResult.verdict}
+                  Verdict: {isGo ? "Book the group" : "Decline the group"}
                 </div>
               </div>
             )}
